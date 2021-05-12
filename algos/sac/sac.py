@@ -20,6 +20,7 @@ class SAC(object):
 
         self.device = args.device
         self.gradient_flow_value = gradient_flow_value
+        self.args=args
 
         if not gradient_flow_value:
             self.critic = QNetwork(num_inputs, action_space.shape[0], args.hidden_size).to(device=self.device)
@@ -71,12 +72,18 @@ class SAC(object):
         else:
             state_batch, action_batch, reward_batch, next_state_batch, mask_batch = memory.sample(batch_size=batch_size)
 
-        state_batch = torch.FloatTensor(state_batch).to(self.device)
-        next_state_batch = torch.FloatTensor(next_state_batch).to(self.device)
-        action_batch = torch.FloatTensor(action_batch).to(self.device)
-        reward_batch = torch.FloatTensor(reward_batch).to(self.device).unsqueeze(1)
-        mask_batch = torch.FloatTensor(mask_batch).to(self.device).unsqueeze(1)
-
+        if self.args.device == "cpu":
+            state_batch = torch.FloatTensor(state_batch).to(self.device).clone()
+            next_state_batch = torch.FloatTensor(next_state_batch).to(self.device).clone()
+            action_batch = torch.FloatTensor(action_batch).to(self.device).clone()
+            reward_batch = torch.FloatTensor(reward_batch).to(self.device).unsqueeze(1).clone()
+            mask_batch = torch.FloatTensor(mask_batch).to(self.device).unsqueeze(1).clone()
+        else:
+            state_batch = torch.FloatTensor(state_batch).to(self.device)
+            next_state_batch = torch.FloatTensor(next_state_batch).to(self.device)
+            action_batch = torch.FloatTensor(action_batch).to(self.device)
+            reward_batch = torch.FloatTensor(reward_batch).to(self.device).unsqueeze(1)
+            mask_batch = torch.FloatTensor(mask_batch).to(self.device).unsqueeze(1)
         with torch.no_grad():
             next_state_action, next_state_log_pi, _ = self.policy.sample(next_state_batch)
             qf1_next_target, qf2_next_target = self.critic_target(next_state_batch, next_state_action)
@@ -91,6 +98,18 @@ class SAC(object):
         # print("next_q", next_q_value.shape)
         qf1_loss = F.mse_loss(qf1, next_q_value)  # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
         qf2_loss = F.mse_loss(qf2, next_q_value)  # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
+
+        # self.critic_optim.zero_grad()
+        # qf1_loss.backward()
+        # self.critic_optim.step()
+        #
+        # self.critic_optim.zero_grad()
+        # qf2_loss.backward()
+        # self.critic_optim.step()
+
+        self.critic_optim.zero_grad()
+        (qf1_loss+qf2_loss).backward()
+        self.critic_optim.step()
 
         pi, log_pi, _ = self.policy.sample(state_batch)
 
@@ -112,16 +131,9 @@ class SAC(object):
                 hi_obs, hi_obs_next = self.policy.phi(feature_data[2]), self.policy.phi(feature_data[3])
                 max_dist = torch.clamp(1 - (hi_obs - hi_obs_next).pow(2).mean(dim=1), min=0.)
                 representation_loss = (min_dist + max_dist).mean()
-                policy_loss += representation_loss
+                policy_loss = policy_loss + representation_loss
 
 
-        self.critic_optim.zero_grad()
-        qf1_loss.backward()
-        self.critic_optim.step()
-
-        self.critic_optim.zero_grad()
-        qf2_loss.backward()
-        self.critic_optim.step()
 
         self.policy_optim.zero_grad()
         policy_loss.backward()

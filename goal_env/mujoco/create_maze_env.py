@@ -1,3 +1,4 @@
+from algos.utils.consts import SETTING
 from .ant_maze_env import AntMazeEnv
 from .point_maze_env import PointMazeEnv
 from .swimmer_maze_env import SwimmerMazeEnv
@@ -88,7 +89,10 @@ class GoalWrapper(Wrapper):
                 for j in range(len(structure[0])):
                     if structure[i][j] not in [1, -1, 'r']:
                         self.vacant_rowcol.append((i, j))
-        self.reward_type = "dense"
+        if SETTING == "sparse":
+            self.reward_type = "sparse"
+        else:
+            self.reward_type = "dense"
 
         self.top_down = top_down
 

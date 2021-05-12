@@ -1,6 +1,8 @@
 import os
 import sys
 
+from algos.utils.consts import SETTING
+
 sys.path.append('../')
 from datetime import datetime
 from tensorboardX import SummaryWriter
@@ -223,7 +225,12 @@ class hier_sac_agent:
         for param_group in self.low_critic_optim.param_groups:
             param_group['lr'] = lr_critic
 
-    def learn(self):
+    def learn(self,epoch_logger):
+        self.store_rewards=0
+        self.cpt_rewards = 0
+        self.cpt_success = 0
+        self.cpt_episode =  0
+        self.all_timesteps = 0
         for epoch in range(self.start_epoch, self.args.n_epochs):
             if epoch > 0 and epoch % self.args.lr_decay_actor == 0:
                 self.adjust_lr_actor(epoch)
@@ -262,6 +269,8 @@ class hier_sac_agent:
                 ag = obs.copy()
 
             for t in range(self.env_params['max_timesteps']):
+                self.already_success = False
+                self.cpt_episode +=1
                 act_obs, act_g = self._preproc_inputs(obs, g)
                 if t % self.c == 0:
                     hi_act_obs = np.concatenate((obs[:self.hi_dim], g))
@@ -277,7 +286,9 @@ class hier_sac_agent:
                     else:
                         hi_action = self.hi_agent.select_action(hi_act_obs)
                     last_hi_obs = hi_act_obs.copy()
+                    # last_hi_obs = hi_act_obs.clone()
                     last_hi_a = hi_action.copy()
+                    # last_hi_a = hi_action.clone()
                     last_hi_r = 0.
                     done = False
                     if self.old_sample:
@@ -285,6 +296,7 @@ class hier_sac_agent:
                     else:
                         # make hi_action a delta phi(s)
                         hi_action_for_low = ag.copy() + hi_action.copy()
+                        # hi_action_for_low = ag.clone() + hi_action.clone()
                         hi_action_for_low = np.clip(hi_action_for_low, -SUBGOAL_RANGE, SUBGOAL_RANGE)
                     hi_action_tensor = torch.tensor(hi_action_for_low, dtype=torch.float32).unsqueeze(0).to(self.device)
                     # update high-level policy
@@ -296,9 +308,17 @@ class hier_sac_agent:
                     else:
                         action = self.explore_policy(act_obs[:, :self.low_dim], hi_action_tensor)
                 # feed the actions into the environment
-                observation_new, r, _, info = self.env.step(action)
+                observation_new, r, done, info = self.env.step(action)
+                # self.env.render()
+                self.all_timesteps += 1
+                self.store_rewards += r
+                self.cpt_rewards += 1
                 if info['is_success']:
-                    done = True
+                    if not self.already_success:
+                        self.cpt_success +=1
+                    self.already_success = True
+                    if SETTING=="dense":
+                        done = True
                     # only record the first success
                     if success == 0 and is_furthest_task:
                         success = t
@@ -375,6 +395,16 @@ class hier_sac_agent:
 
 
             # start to do the evaluation
+            epoch_logger.log_tabular("reward",self.store_rewards/self.cpt_rewards)
+            epoch_logger.log_tabular("success",self.cpt_success/self.cpt_episode)
+            epoch_logger.log_tabular("timesteps",self.all_timesteps)
+            self.cpt_success= 0
+            self.store_rewards = 0
+            self.cpt_rewards = 0
+            self.cpt_episode = 0
+            epoch_logger.dump_tabular()
+
+
             if epoch % self.args.eval_interval == 0 and epoch != 0:
                 if self.test_env1 is not None:
                     eval_success1, _ = self._eval_hier_agent(env=self.test_env1)
@@ -429,7 +459,7 @@ class hier_sac_agent:
         if action.shape == ():
             action = np.array([action])
         # add the gaussian
-        action += self.args.noise_eps * self.env_params['action_max'] * np.random.randn(*action.shape)
+        action = action + self.args.noise_eps * self.env_params['action_max'] * np.random.randn(*action.shape)
         action = np.clip(action, -self.env_params['action_max'], self.env_params['action_max'])
         # random actions...
         if np.random.rand() < self.args.random_eps:
@@ -522,11 +552,11 @@ class hier_sac_agent:
         critic_loss = (target_q_value - real_q_value).pow(2).mean()
         if use_forward_loss:
             forward_loss = critic(obs_cur, ag_next, actions_tensor).pow(2).mean()
-            critic_loss += forward_loss
+            critic_loss =critic+ forward_loss
         # the actor loss
         actions_real = actor(obs_cur, g_cur)
         actor_loss = -critic(obs_cur, g_cur, actions_real).mean()
-        actor_loss += self.args.action_l2 * (actions_real / self.env_params['action_max']).pow(2).mean()
+        actor_loss = actor_loss + self.args.action_l2 * (actions_real / self.env_params['action_max']).pow(2).mean()
 
         # start to update the network
         actor_optim.zero_grad()
@@ -617,7 +647,7 @@ class hier_sac_agent:
             max_dist = torch.clamp(1 - (hi_obs - hi_obs_next).pow(2).mean(dim=1), min=0.)
             representation_loss = (min_dist + max_dist).mean()
             # add l2 regularization
-            representation_loss += self.feature_reg * (obs / self.abs_range).pow(2).mean()
+            representation_loss = representation_loss + self.feature_reg * (obs / self.abs_range).pow(2).mean()
         else:
             hi_action = torch.tensor(hi_action, dtype=torch.float32).to(self.device)
             with torch.no_grad():
@@ -634,7 +664,7 @@ class hier_sac_agent:
             else:
                 predict_state = self.representation(sample_data[2], hi_action)
                 prediction_loss = (predict_state - target_next_obs).pow(2).mean()
-            representation_loss += self.prediction_coeff * prediction_loss
+            representation_loss = representation_loss + self.prediction_coeff * prediction_loss
         self.representation_optim.zero_grad()
         representation_loss.backward()
         self.representation_optim.step()

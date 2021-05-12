@@ -1,6 +1,8 @@
 from gym.envs.registration import register
 import sys
 
+from algos.utils.consts import SETTING
+
 print("path", sys.argv[0].split('/')[-1], "!!!")
 if sys.argv[0].split('/')[-1] in ["train_ddpg.py", "visitation_plot.py", "vis_fetch.py"]:
     from train_ddpg import args
@@ -39,7 +41,10 @@ for name_t in all_name:
             if name_t == "AntBlock":
                 fix_goal = True
             else:
-                fix_goal = False
+                if SETTING == "Sparse":
+                    fix_goal = True
+                else:
+                    fix_goal = False
         goal_args = [[-5, -5], [5, 5]]
 
         register(

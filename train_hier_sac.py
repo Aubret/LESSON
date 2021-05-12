@@ -1,6 +1,10 @@
+import datetime
+
 import numpy as np
 import gym
-from arguments.arguments_hier_sac import get_args_ant, get_args_chain
+
+from algos.utils.logger import EpochLogger
+from arguments.arguments_hier_sac import get_args_ant, get_args_chain, get_args_point
 from algos.hier_sac import hier_sac_agent
 from goal_env.mujoco import *
 import random
@@ -40,14 +44,17 @@ def launch(args):
     torch.manual_seed(args.seed)
     if args.device is not 'cpu':
         torch.cuda.manual_seed(args.seed)
-    gym.spaces.prng.seed(args.seed)
+    env.action_space.seed(args.seed)
+    env.observation_space.seed(args.seed)
     # get the environment parameters
     if args.env_name[:3] in ["Ant", "Poi", "Swi"]:
         env.env.env.visualize_goal = args.animate
         test_env.env.env.visualize_goal = args.animate
     env_params = get_env_params(env)
+    print(env_params)
     env_params['max_test_timesteps'] = test_env._max_episode_steps
     # create the ddpg agent to interact with the environment
+    epoch_logger = EpochLogger(output_dir=args.save_dir,exp_name=datetime.datetime.now().strftime("%Y-%m-%d_%H_%M_%S")+'_'+str(args.seed))
     sac_trainer = hier_sac_agent(args, env, env_params, test_env, test_env1, test_env2)
     if args.eval:
         if not args.resume:
@@ -59,11 +66,11 @@ def launch(args):
         # sac_trainer.vis_learning_process()
         # sac_trainer.picvideo('fig/final/', (1920, 1080))
     else:
-        sac_trainer.learn()
+        sac_trainer.learn(epoch_logger)
 
 
 # get the params
-args = get_args_ant()
+args = get_args_point()
 # args = get_args_chain()
 # args = get_args_fetch()
 # args = get_args_point()
