@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 import math
 import numpy as np
 import gym
+from jupyter_client.session import DONE
 
 from algos.utils.consts import SETTING
 from . import maze_env_utils
@@ -608,6 +609,6 @@ class MazeEnv(gym.Env):
             # print(self.EPS, next_obs[:2], self.GOAL[:2])
             done = bool(((next_obs[:2] - self.GOAL[:2]) ** 2).sum() < self.EPS)
             inner_reward = int(done)
-            if SETTING == "sparse":
+            if not DONE:
                 done=False
         return next_obs, inner_reward, done, info

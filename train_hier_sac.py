@@ -1,5 +1,12 @@
 import datetime
-
+import os
+num_threads = 1
+str_threads=str(num_threads)
+os.environ["OMP_NUM_THREADS"] = str_threads
+os.environ["OPENBLAS_NUM_THREADS"] = str_threads
+os.environ["MKL_NUM_THREADS"] = str_threads
+os.environ["VECLIB_MAXIMUM_THREADS"] = str_threads
+os.environ["NUMEXPR_NUM_THREADS"] = str_threads
 import numpy as np
 import gym
 
@@ -51,10 +58,12 @@ def launch(args):
         env.env.env.visualize_goal = args.animate
         test_env.env.env.visualize_goal = args.animate
     env_params = get_env_params(env)
-    print(env_params)
     env_params['max_test_timesteps'] = test_env._max_episode_steps
+    save_dir=args.save_dir+datetime.datetime.now().strftime("%Y-%m-%d_%H_%M_%S")+'_'+args.exp_name
+    epoch_logger = EpochLogger(output_dir=save_dir,exp_name=datetime.datetime.now().strftime("%Y-%m-%d_%H_%M_%S")+'_'+str(args.seed))
+
+    print(args.image)
     # create the ddpg agent to interact with the environment
-    epoch_logger = EpochLogger(output_dir=args.save_dir,exp_name=datetime.datetime.now().strftime("%Y-%m-%d_%H_%M_%S")+'_'+str(args.seed))
     sac_trainer = hier_sac_agent(args, env, env_params, test_env, test_env1, test_env2)
     if args.eval:
         if not args.resume:

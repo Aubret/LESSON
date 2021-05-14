@@ -11,6 +11,7 @@ Here are the param for the training
 def get_args_ant():
     parser = argparse.ArgumentParser()
     # the environment setting
+    parser.add_argument('--exp_name', type=str, default='test', help='the environment name')
     parser.add_argument('--env-name', type=str, default='AntMaze1-v1', help='the environment name')
     parser.add_argument('--test', type=str, default='AntMaze1Test-v1')
     parser.add_argument('--n-epochs', type=int, default=20000, help='the number of epochs to train the agent')
@@ -92,6 +93,7 @@ def get_args_ant():
 def get_args_point():
     parser = argparse.ArgumentParser()
     # the environment setting
+    parser.add_argument('--exp_name', type=str, default='test', help='the environment name')
     parser.add_argument('--env-name', type=str, default='PointMaze1-v1', help='the environment name')
     parser.add_argument('--test', type=str, default='PointMaze1Test-v1')
     parser.add_argument('--n-epochs', type=int, default=20000, help='the number of epochs to train the agent')
@@ -144,7 +146,7 @@ def get_args_point():
     parser.add_argument('--low_reward_coeff', type=float, default=0.1, help='low-level reward coeff')
     parser.add_argument("--use_prediction", type=bool, default=False, help='use prediction error to learn feature')
     parser.add_argument("--start_update_phi", type=int, default=10, help='use prediction error to learn feature')
-    parser.add_argument("--image", type=bool, default=True, help='use image input')
+    parser.add_argument("--image", type=bool, default=False, help='use image input')
     parser.add_argument("--old_sample", type=bool, default=False, help='sample the absolute goal in the abs_range')
 
     # args of sac

@@ -1,7 +1,7 @@
 import os
 import sys
 
-from algos.utils.consts import SETTING
+from algos.utils.consts import SETTING, ALL_DATA
 
 sys.path.append('../')
 from datetime import datetime
@@ -44,6 +44,12 @@ class hier_sac_agent:
         self.low_dim = env_params['obs']
         self.env_params['low_dim'] = self.low_dim
         self.hi_dim = env_params['obs']
+        if not ALL_DATA:
+            if "Point" in args.env_name:
+                self.hi_dim -= 6
+            if "Ant" in args.env_name:
+                self.hi_dim -= 29
+
         print("hi_dim", self.hi_dim)
 
         self.learn_goal_space = True
@@ -73,8 +79,10 @@ class hier_sac_agent:
             maze_high = np.concatenate((self.env.env.maze_high, np.array(vel_high)))
             self.hi_act_space = gym.spaces.Box(low=maze_low, high=maze_high)
 
-
-        dense_low = True
+        if SETTING == "dense":
+            dense_low = True
+        else:
+            dense_low = False
         self.low_use_clip = not dense_low  # only sparse reward use clip
         if args.replay_strategy == "future":
             self.low_forward = True
@@ -147,7 +155,7 @@ class hier_sac_agent:
         self.init_network()
         # init high-level agent
         self.hi_agent = SAC(self.hi_dim + env_params['goal'], self.hi_act_space, args, False, env_params['goal'],
-                            args.gradient_flow_value, args.abs_range, tanh_output)
+                            args.gradient_flow_value, args.abs_range, tanh_output,high=True)
         self.env_params['real_goal_dim'] = self.real_goal_dim
         self.hi_buffer = ReplayMemory(args.buffer_size)
 
@@ -317,8 +325,8 @@ class hier_sac_agent:
                     if not self.already_success:
                         self.cpt_success +=1
                     self.already_success = True
-                    if SETTING=="dense":
-                        done = True
+                    # if SETTING=="dense":
+                    done = True
                     # only record the first success
                     if success == 0 and is_furthest_task:
                         success = t
@@ -394,18 +402,9 @@ class hier_sac_agent:
                         self._soft_update_target_network(self.low_critic_target_network, self.low_critic_network)
 
 
-            # start to do the evaluation
-            epoch_logger.log_tabular("reward",self.store_rewards/self.cpt_rewards)
-            epoch_logger.log_tabular("success",self.cpt_success/self.cpt_episode)
-            epoch_logger.log_tabular("timesteps",self.all_timesteps)
-            self.cpt_success= 0
-            self.store_rewards = 0
-            self.cpt_rewards = 0
-            self.cpt_episode = 0
-            epoch_logger.dump_tabular()
-
 
             if epoch % self.args.eval_interval == 0 and epoch != 0:
+
                 if self.test_env1 is not None:
                     eval_success1, _ = self._eval_hier_agent(env=self.test_env1)
                     eval_success2, _ = self._eval_hier_agent(env=self.test_env2)
@@ -413,6 +412,8 @@ class hier_sac_agent:
                 random_success_rate, _ = self._eval_hier_agent(env=self.env)
                 self.success_log.append(farthest_success_rate)
                 mean_success = np.mean(self.success_log[-5:])
+                epoch_logger.log_tabular("eval_mean_success",mean_success.item())
+
                 # stop updating phi and low
                 if self.early_stop and (mean_success >= 0.9 or epoch > self.early_stop_thres):
                     print("early stop !!!")
@@ -446,6 +447,16 @@ class hier_sac_agent:
                                                eval_success1, epoch)
                         self.writer.add_scalar('Success_rate/eval2_' + self.args.env_name, eval_success2,
                                                epoch)
+
+                # start to do the evaluation
+                epoch_logger.log_tabular("reward", self.store_rewards / self.cpt_rewards)
+                epoch_logger.log_tabular("success", self.cpt_success / self.cpt_episode)
+                epoch_logger.log_tabular("timesteps", self.all_timesteps)
+                self.cpt_success = 0
+                self.store_rewards = 0
+                self.cpt_rewards = 0
+                self.cpt_episode = 0
+                epoch_logger.dump_tabular()
 
     # pre_process the inputs
     def _preproc_inputs(self, obs, g):

@@ -4,10 +4,11 @@ import torch.nn.functional as F
 from torch.optim import Adam
 from algos.sac.utils import soft_update, hard_update
 from algos.sac.model import GaussianPolicy, QNetwork, DeterministicPolicy, QNetwork_phi
+from algos.utils.consts import ALL_DATA
 
 
 class SAC(object):
-    def __init__(self, num_inputs, action_space, args, pri_replay, goal_dim, gradient_flow_value, abs_range, tanh_output):
+    def __init__(self, num_inputs, action_space, args, pri_replay, goal_dim, gradient_flow_value, abs_range, tanh_output,high=False):
 
         self.gamma = args.gamma
         self.tau = args.tau
@@ -57,8 +58,17 @@ class SAC(object):
             self.policy = DeterministicPolicy(num_inputs, action_space.shape[0], args.hidden_size, action_space).to(self.device)
             self.policy_optim = Adam(self.policy.parameters(), lr=args.lr)
 
+        self.start=0
+        if not ALL_DATA and high:
+            if "Point" in args.env_name:
+                self.start = 6
+            if "Ant" in args.env_name:
+                self.start = 29
+
     def select_action(self, state, evaluate=False):
+
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
+        state=state[:,self.start:]
         if evaluate is False:
             action, _, _ = self.policy.sample(state)
         else:
@@ -84,6 +94,10 @@ class SAC(object):
             action_batch = torch.FloatTensor(action_batch).to(self.device)
             reward_batch = torch.FloatTensor(reward_batch).to(self.device).unsqueeze(1)
             mask_batch = torch.FloatTensor(mask_batch).to(self.device).unsqueeze(1)
+
+        state_batch= state_batch[:,self.start:]
+        next_state_batch= next_state_batch[:,self.start:]
+
         with torch.no_grad():
             next_state_action, next_state_log_pi, _ = self.policy.sample(next_state_batch)
             qf1_next_target, qf2_next_target = self.critic_target(next_state_batch, next_state_action)

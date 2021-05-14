@@ -41,7 +41,7 @@ for name_t in all_name:
             if name_t == "AntBlock":
                 fix_goal = True
             else:
-                if SETTING == "Sparse":
+                if SETTING == "sparse":
                     fix_goal = True
                 else:
                     fix_goal = False
