@@ -23,6 +23,16 @@ class SAC(object):
         self.gradient_flow_value = gradient_flow_value
         self.args=args
 
+        self.start=0
+        if not ALL_DATA and high:
+            if "Point" in args.env_name:
+                self.start = 6
+                num_inputs -= 6
+            if "Ant" in args.env_name:
+                self.start = 29
+                num_inputs -= 29
+
+
         if not gradient_flow_value:
             self.critic = QNetwork(num_inputs, action_space.shape[0], args.hidden_size).to(device=self.device)
             self.critic_optim = Adam(self.critic.parameters(), lr=args.lr)
@@ -58,12 +68,7 @@ class SAC(object):
             self.policy = DeterministicPolicy(num_inputs, action_space.shape[0], args.hidden_size, action_space).to(self.device)
             self.policy_optim = Adam(self.policy.parameters(), lr=args.lr)
 
-        self.start=0
-        if not ALL_DATA and high:
-            if "Point" in args.env_name:
-                self.start = 6
-            if "Ant" in args.env_name:
-                self.start = 29
+
 
     def select_action(self, state, evaluate=False):
 

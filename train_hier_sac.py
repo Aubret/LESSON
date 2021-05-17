@@ -62,8 +62,7 @@ def launch(args):
     save_dir=args.save_dir+datetime.datetime.now().strftime("%Y-%m-%d_%H_%M_%S")+'_'+args.exp_name
     epoch_logger = EpochLogger(output_dir=save_dir,exp_name=datetime.datetime.now().strftime("%Y-%m-%d_%H_%M_%S")+'_'+str(args.seed))
 
-    print(args.image)
-    # create the ddpg agent to interact with the environment
+        # create the ddpg agent to interact with the environment
     sac_trainer = hier_sac_agent(args, env, env_params, test_env, test_env1, test_env2)
     if args.eval:
         if not args.resume:

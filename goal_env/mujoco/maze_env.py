@@ -6,9 +6,8 @@ import xml.etree.ElementTree as ET
 import math
 import numpy as np
 import gym
-from jupyter_client.session import DONE
 
-from algos.utils.consts import SETTING
+from algos.utils.consts import SETTING, DONE
 from . import maze_env_utils
 from gym.utils import seeding
 from gym import wrappers

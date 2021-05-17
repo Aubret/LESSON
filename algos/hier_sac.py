@@ -5,7 +5,6 @@ from algos.utils.consts import SETTING, ALL_DATA
 
 sys.path.append('../')
 from datetime import datetime
-from tensorboardX import SummaryWriter
 from models.networks import *
 from algos.replay_buffer import replay_buffer, replay_buffer_energy
 from algos.her import her_sampler
@@ -123,8 +122,8 @@ class hier_sac_agent:
         # print("scaling", scaling)
 
         self.count_latent = False
-        if self.count_latent:
-            self.hash = HashingBonusEvaluator(512, 2)
+        # if self.count_latent:
+        #     self.hash = HashingBonusEvaluator(512, 2)
         self.count_obs = False
         if self.count_obs:
             self.hash = HashingBonusEvaluator(512, env_params['obs'])
@@ -137,19 +136,19 @@ class hier_sac_agent:
         self.use_prob = False
         print("prediction_coeff", self.prediction_coeff)
 
-        if args.save:
-            current_time = datetime.now().strftime('%b%d_%H-%M-%S')
-            self.log_dir = 'runs/hier/' + str(args.env_name) + '/RB_Decay_' + current_time + \
-                            "_C_" + str(args.c) + "_Image_" + str(args.image) + \
-                            "_Seed_" + str(args.seed) + "_Reward_" + str(args.low_reward_coeff) + \
-                            "_NoPhi_" + str(self.not_update_phi) + "_LearnG_" + str(self.learn_goal_space) + "_Early_" + str(self.early_stop_thres) + str(args.early_stop)
-            self.writer = SummaryWriter(log_dir=self.log_dir)
-            if not os.path.exists(self.args.save_dir):
-                os.mkdir(self.args.save_dir)
-            # path to save the model
-            self.model_path = os.path.join(self.args.save_dir, self.args.env_name + "_" + current_time)
-            if not os.path.exists(self.model_path):
-                os.mkdir(self.model_path)
+        # if args.save:
+        #     current_time = datetime.now().strftime('%b%d_%H-%M-%S')
+        #     self.log_dir = 'runs/hier/' + str(args.env_name) + '/RB_Decay_' + current_time + \
+        #                     "_C_" + str(args.c) + "_Image_" + str(args.image) + \
+        #                     "_Seed_" + str(args.seed) + "_Reward_" + str(args.low_reward_coeff) + \
+        #                     "_NoPhi_" + str(self.not_update_phi) + "_LearnG_" + str(self.learn_goal_space) + "_Early_" + str(self.early_stop_thres) + str(args.early_stop)
+        #     self.writer = SummaryWriter(log_dir=self.log_dir)
+        #     if not os.path.exists(self.args.save_dir):
+        #         os.mkdir(self.args.save_dir)
+        #     # path to save the model
+        #     self.model_path = os.path.join(self.args.save_dir, self.args.env_name + "_" + current_time)
+        #     if not os.path.exists(self.model_path):
+        #         os.mkdir(self.model_path)
         # init low-level network
         self.real_goal_dim = self.hi_act_space.shape[0]  # low-level goal space and high-level action space
         self.init_network()
@@ -316,7 +315,7 @@ class hier_sac_agent:
                     else:
                         action = self.explore_policy(act_obs[:, :self.low_dim], hi_action_tensor)
                 # feed the actions into the environment
-                observation_new, r, done, info = self.env.step(action)
+                observation_new, r,_, info = self.env.step(action)
                 # self.env.render()
                 self.all_timesteps += 1
                 self.store_rewards += r
@@ -386,8 +385,8 @@ class hier_sac_agent:
             mb_actions = np.array([ep_actions])
             self.low_buffer.store_episode([mb_obs, mb_ag, mb_g, mb_actions, success, False])
 
-            if self.args.save and self.args.env_name == "NChain-v1":
-                self.writer.add_scalar('Explore/coverage_' + self.args.env_name, self.env.env.coverage, epoch)
+            # if self.args.save and self.args.env_name == "NChain-v1":
+            #     self.writer.add_scalar('Explore/coverage_' + self.args.env_name, self.env.env.coverage, epoch)
             # print("coverage", self.env.env.coverage)
 
             # update low-level
@@ -413,6 +412,8 @@ class hier_sac_agent:
                 self.success_log.append(farthest_success_rate)
                 mean_success = np.mean(self.success_log[-5:])
                 epoch_logger.log_tabular("eval_mean_success",mean_success.item())
+                epoch_logger.log_tabular("random_success_rate", random_success_rate)
+                epoch_logger.log_tabular("farthest_success_rate",farthest_success_rate)
 
                 # stop updating phi and low
                 if self.early_stop and (mean_success >= 0.9 or epoch > self.early_stop_thres):
@@ -423,30 +424,30 @@ class hier_sac_agent:
                 if self.save_fig:
                     self.vis_hier_policy(epoch=epoch)
                     self.visualize_representation(epoch=epoch)
-                if self.args.save:
-                    print("log_dir: ", self.log_dir)
-                    torch.save([self.hi_agent.critic.state_dict()], self.model_path + '/hi_critic_model.pt')
-                    torch.save([self.low_critic_network.state_dict()], self.model_path + '/low_critic_model.pt')
-                    torch.save(self.hi_buffer, self.model_path + '/hi_buffer.pt')
-                    torch.save(self.low_buffer, self.model_path + '/low_buffer.pt')
-                    if not self.args.gradient_flow and not self.args.gradient_flow_value:
-                        if self.save_model:
-                            # self.cal_MIV(epoch)
-                            torch.save([self.representation.state_dict()], self.model_path + '/phi_model_{}.pt'.format(epoch))
-                            torch.save([self.hi_agent.policy.state_dict()], self.model_path + '/hi_actor_{}.pt'.format(epoch))
-                            torch.save([self.low_actor_network.state_dict()], self.model_path + '/low_actor_{}.pt'.format(epoch))
-                        else:
-                            torch.save([self.representation.state_dict()], self.model_path + '/phi_model.pt')
-                            torch.save([self.hi_agent.policy.state_dict()], self.model_path + '/hi_actor_model.pt')
-                            torch.save([self.low_actor_network.state_dict()], self.model_path + '/low_actor_model.pt')
-                    self.writer.add_scalar('Success_rate/hier_farthest_' + self.args.env_name, farthest_success_rate, epoch)
-                    self.writer.add_scalar('Success_rate/hier_random_' + self.args.env_name, random_success_rate, epoch)
-                    self.writer.add_scalar('Explore/furthest_task_' + self.args.env_name, self.furthest_task, epoch)
-                    if self.test_env1 is not None:
-                        self.writer.add_scalar('Success_rate/eval1_' + self.args.env_name,
-                                               eval_success1, epoch)
-                        self.writer.add_scalar('Success_rate/eval2_' + self.args.env_name, eval_success2,
-                                               epoch)
+                # if self.args.save:
+                    # print("log_dir: ", self.log_dir)
+                    # torch.save([self.hi_agent.critic.state_dict()], self.model_path + '/hi_critic_model.pt')
+                    # torch.save([self.low_critic_network.state_dict()], self.model_path + '/low_critic_model.pt')
+                    # torch.save(self.hi_buffer, self.model_path + '/hi_buffer.pt')
+                    # torch.save(self.low_buffer, self.model_path + '/low_buffer.pt')
+                    # if not self.args.gradient_flow and not self.args.gradient_flow_value:
+                    #     if self.save_model:
+                    #         # self.cal_MIV(epoch)
+                    #         torch.save([self.representation.state_dict()], self.model_path + '/phi_model_{}.pt'.format(epoch))
+                    #         torch.save([self.hi_agent.policy.state_dict()], self.model_path + '/hi_actor_{}.pt'.format(epoch))
+                    #         torch.save([self.low_actor_network.state_dict()], self.model_path + '/low_actor_{}.pt'.format(epoch))
+                    #     else:
+                    #         torch.save([self.representation.state_dict()], self.model_path + '/phi_model.pt')
+                    #         torch.save([self.hi_agent.policy.state_dict()], self.model_path + '/hi_actor_model.pt')
+                    #         torch.save([self.low_actor_network.state_dict()], self.model_path + '/low_actor_model.pt')
+                    # self.writer.add_scalar('Success_rate/hier_farthest_' + self.args.env_name, farthest_success_rate, epoch)
+                    # self.writer.add_scalar('Success_rate/hier_random_' + self.args.env_name, random_success_rate, epoch)
+                    # self.writer.add_scalar('Explore/furthest_task_' + self.args.env_name, self.furthest_task, epoch)
+                    # if self.test_env1 is not None:
+                    #     self.writer.add_scalar('Success_rate/eval1_' + self.args.env_name,
+                    #                            eval_success1, epoch)
+                    #     self.writer.add_scalar('Success_rate/eval2_' + self.args.env_name, eval_success2,
+                    #                            epoch)
 
                 # start to do the evaluation
                 epoch_logger.log_tabular("reward", self.store_rewards / self.cpt_rewards)
@@ -494,10 +495,10 @@ class hier_sac_agent:
                                                                                           self.env_params,
                                                                                           self.hi_sparse,
                                                                                           sample_data)
-        if self.args.save:
-            self.writer.add_scalar('Loss/hi_critic_1', critic_1_loss, epoch)
-            self.writer.add_scalar('Loss/hi_critic_2', critic_2_loss, epoch)
-            self.writer.add_scalar('Loss/hi_policy', policy_loss, epoch)
+        # if self.args.save:
+        #     self.writer.add_scalar('Loss/hi_critic_1', critic_1_loss, epoch)
+        #     self.writer.add_scalar('Loss/hi_critic_2', critic_2_loss, epoch)
+        #     self.writer.add_scalar('Loss/hi_policy', policy_loss, epoch)
 
     def random_policy(self, obs, goal):
         random_actions = np.random.uniform(low=-self.env_params['action_max'], high=self.env_params['action_max'], \
@@ -580,13 +581,13 @@ class hier_sac_agent:
         torch.nn.utils.clip_grad_norm_(self.low_critic_network.parameters(), 1.0)
         critic_optim.step()
 
-        if self.args.save:
-            if T == 'max_timesteps':
-                name = 'low'
-            else:
-                name = 'high'
-            self.writer.add_scalar('Loss/' + name + '_actor_loss' + self.args.metric, actor_loss, epoch)
-            self.writer.add_scalar('Loss/' + name + '_critic_loss' + self.args.metric, critic_loss, epoch)
+        # if self.args.save:
+        #     if T == 'max_timesteps':
+        #         name = 'low'
+        #     else:
+        #         name = 'high'
+        #     self.writer.add_scalar('Loss/' + name + '_actor_loss' + self.args.metric, actor_loss, epoch)
+        #     self.writer.add_scalar('Loss/' + name + '_critic_loss' + self.args.metric, critic_loss, epoch)
 
     def _eval_hier_agent(self, env, n_test_rollouts=10):
         total_success_rate = []
@@ -613,9 +614,11 @@ class hier_sac_agent:
                         hi_action_tensor = torch.tensor(new_hi_action, dtype=torch.float32).unsqueeze(0).to(self.device)
                     action = self.test_policy(act_obs[:, :self.low_dim], hi_action_tensor)
                 observation_new, rew, done, info = env.step(action)
+
                 if self.animate:
                     env.render()
                 obs = observation_new['observation']
+                print(obs)
                 g = observation_new['desired_goal']
                 if done:
                     per_success_rate.append(info['is_success'])
@@ -679,8 +682,8 @@ class hier_sac_agent:
         self.representation_optim.zero_grad()
         representation_loss.backward()
         self.representation_optim.step()
-        if self.args.save:
-            self.writer.add_scalar('Loss/phi_loss' + self.args.metric, representation_loss, epoch)
+        # if self.args.save:
+        #     self.writer.add_scalar('Loss/phi_loss' + self.args.metric, representation_loss, epoch)
 
     def slow_collect(self, batch_size=100):
         if self.args.use_prediction:
