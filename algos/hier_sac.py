@@ -10,16 +10,11 @@ from algos.replay_buffer import replay_buffer, replay_buffer_energy
 from algos.her import her_sampler
 # from planner.goal_plan import *
 import matplotlib.pyplot as plt
-from sklearn.manifold import TSNE
-import time
 from algos.sac.sac import SAC
 from algos.sac.replay_memory import ReplayMemory, Array_ReplayMemory
 import gym
 import pickle
-# from planner.simhash import HashingBonusEvaluator
-from PIL import Image
-import imageio
-from mpl_toolkits.mplot3d import Axes3D
+
 import seaborn as sns
 sns.set_color_codes()
 
@@ -198,9 +193,9 @@ class hier_sac_agent:
         self.distance_threshold = self.args.distance
 
         if not (args.gradient_flow or args.use_prediction or args.gradient_flow_value):
-            self.representation = RepresentationNetwork(env_params, 3, self.abs_range, self.real_goal_dim).to(args.device)
+            self.representation = RepresentationNetwork(env_params, 3, self.abs_range, self.real_goal_dim,args=args).to(args.device)
             if args.use_target:
-                self.target_phi = RepresentationNetwork(env_params, 3, self.abs_range, 2).to(args.device)
+                self.target_phi = RepresentationNetwork(env_params, 3, self.abs_range, 2,args=args).to(args.device)
                 # load the weights into the target networks
                 self.target_phi.load_state_dict(self.representation.state_dict())
             self.representation_optim = torch.optim.Adam(self.representation.parameters(), lr=0.0001)

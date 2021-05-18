@@ -1,6 +1,8 @@
 import torch.nn.functional as F
 import sys
 
+from algos.utils.consts import ALL_DATA
+
 sys.path.append('../')
 from models.distance import *
 import numpy as np
@@ -324,9 +326,18 @@ class EmbedNetWrapper(nn.Module):
 
 
 class RepresentationNetwork(nn.Module):
-    def __init__(self, env_params, layer, abs_range, out_dim):
+    def __init__(self, env_params, layer, abs_range, out_dim,args=None):
         super(RepresentationNetwork, self).__init__()
         self.obs_dim = env_params['obs']
+        if not ALL_DATA:
+            if "Point" in args.env_name:
+                self.start = 6
+                self.obs_dim -= 6
+            if "Ant" in args.env_name:
+                self.start = 29
+                self.obs_dim -= 29
+
+
         self.out_dim = out_dim
         self.mid_dim = 100
 
@@ -346,6 +357,7 @@ class RepresentationNetwork(nn.Module):
     def forward(self, obs):
         if len(obs.shape) is 1:
             obs = obs.unsqueeze(0)
+        obs = obs[:,self.start:]
         s = self.obs_encoder(obs)
         return s
 

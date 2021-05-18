@@ -1,3 +1,3 @@
 SETTING="dense"
 DONE=True
-ALL_DATA=True
+ALL_DATA=False
