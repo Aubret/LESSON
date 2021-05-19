@@ -64,7 +64,7 @@ def get_args_ant():
     parser.add_argument('--low_reward_coeff', type=float, default=0.1, help='low-level reward coeff')
     parser.add_argument("--use_prediction", type=bool, default=False, help='use prediction error to learn feature')
     parser.add_argument("--start_update_phi", type=int, default=10, help='use prediction error to learn feature')
-    parser.add_argument("--image", type=bool, default=True, help='use image input')
+    parser.add_argument("--image", type=bool, default=False, help='use image input')
     parser.add_argument("--old_sample", type=bool, default=False, help='sample the absolute goal in the abs_range')
 
     # args of sac
@@ -146,7 +146,7 @@ def get_args_point():
     parser.add_argument('--low_reward_coeff', type=float, default=0.1, help='low-level reward coeff')
     parser.add_argument("--use_prediction", type=bool, default=False, help='use prediction error to learn feature')
     parser.add_argument("--start_update_phi", type=int, default=10, help='use prediction error to learn feature')
-    parser.add_argument("--image", type=bool, default=True, help='use image input')
+    parser.add_argument("--image", type=bool, default=False, help='use image input')
     parser.add_argument("--old_sample", type=bool, default=False, help='sample the absolute goal in the abs_range')
 
     # args of sac

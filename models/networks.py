@@ -329,6 +329,7 @@ class RepresentationNetwork(nn.Module):
     def __init__(self, env_params, layer, abs_range, out_dim,args=None):
         super(RepresentationNetwork, self).__init__()
         self.obs_dim = env_params['obs']
+        self.start=0
         if not ALL_DATA:
             if "Point" in args.env_name:
                 self.start = 6

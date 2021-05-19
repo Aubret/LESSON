@@ -613,7 +613,6 @@ class hier_sac_agent:
                 if self.animate:
                     env.render()
                 obs = observation_new['observation']
-                print(obs)
                 g = observation_new['desired_goal']
                 if done:
                     per_success_rate.append(info['is_success'])
