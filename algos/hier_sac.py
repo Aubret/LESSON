@@ -559,7 +559,7 @@ class hier_sac_agent:
         critic_loss = (target_q_value - real_q_value).pow(2).mean()
         if use_forward_loss:
             forward_loss = critic(obs_cur, ag_next, actions_tensor).pow(2).mean()
-            critic_loss =critic+ forward_loss
+            critic_loss =critic_loss + forward_loss
         # the actor loss
         actions_real = actor(obs_cur, g_cur)
         actor_loss = -critic(obs_cur, g_cur, actions_real).mean()

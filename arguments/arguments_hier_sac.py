@@ -18,7 +18,7 @@ def get_args_ant():
     parser.add_argument('--n-batches', type=int, default=200, help='the times to update the network')
     parser.add_argument('--seed', type=int, default=125, help='random seed')
 
-    parser.add_argument('--replay-strategy', type=str, default='none', help='the HER strategy')
+    parser.add_argument('--replay-strategy', type=str, default='future', help='the HER strategy')
     parser.add_argument('--save-dir', type=str, default='saved_models/', help='the path to save the models')
 
     parser.add_argument('--noise-eps', type=float, default=0.2, help='noise factor for Gaussian')
@@ -100,7 +100,7 @@ def get_args_point():
     parser.add_argument('--n-batches', type=int, default=200, help='the times to update the network')
     parser.add_argument('--seed', type=int, default=125, help='random seed')
 
-    parser.add_argument('--replay-strategy', type=str, default='none', help='the HER strategy')
+    parser.add_argument('--replay-strategy', type=str, default='future', help='the HER strategy')
     parser.add_argument('--save-dir', type=str, default='saved_models/', help='the path to save the models')
 
     parser.add_argument('--noise-eps', type=float, default=0.2, help='noise factor for Gaussian')
@@ -146,7 +146,7 @@ def get_args_point():
     parser.add_argument('--low_reward_coeff', type=float, default=0.1, help='low-level reward coeff')
     parser.add_argument("--use_prediction", type=bool, default=False, help='use prediction error to learn feature')
     parser.add_argument("--start_update_phi", type=int, default=10, help='use prediction error to learn feature')
-    parser.add_argument("--image", type=bool, default=False, help='use image input')
+    parser.add_argument("--image", type=bool, default=True, help='use image input')
     parser.add_argument("--old_sample", type=bool, default=False, help='sample the absolute goal in the abs_range')
 
     # args of sac
@@ -229,7 +229,7 @@ def get_args_chain():
     parser.add_argument('--low_reward_coeff', type=float, default=0.01, help='low-level reward coeff')
     parser.add_argument("--use_prediction", type=bool, default=False, help='use prediction error to learn feature')
     parser.add_argument("--start_update_phi", type=int, default=2, help='use prediction error to learn feature')
-    parser.add_argument("--image", type=bool, default=False, help='use image input')
+    parser.add_argument("--image", type=bool, default=True, help='use image input')
 
     # args of sac (high-level learning)
     parser.add_argument('--policy', default="Gaussian",
